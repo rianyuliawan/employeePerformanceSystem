@@ -1,0 +1,232 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "approver", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "EvaluationApproved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "reviewer", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "EvaluationReviewed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "manager", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "EvaluationSubmitted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "indexed": false, "internalType": "bool", "name": "valid", "type": "bool" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "DocumentVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "string", "name": "promotionId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "director", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "PromotionApproved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "manager", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "PromotionRecommended",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "evaluationId", "type": "string" }
+    ],
+    "name": "approveEvaluation",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "promotionId", "type": "string" },
+      { "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "internalType": "bytes32", "name": "promotionHash", "type": "bytes32" }
+    ],
+    "name": "approvePromotion",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "directors",
+    "outputs": [
+      { "internalType": "bool", "name": "", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "evaluationId", "type": "string" }
+    ],
+    "name": "getEvaluation",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "string", "name": "evaluationId", "type": "string" },
+          { "internalType": "string", "name": "employeeId", "type": "string" },
+          { "internalType": "bytes32", "name": "documentHash", "type": "bytes32" },
+          { "internalType": "uint8", "name": "status", "type": "uint8" },
+          { "internalType": "address", "name": "createdBy", "type": "address" },
+          { "internalType": "address", "name": "updatedBy", "type": "address" },
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "bool", "name": "exists", "type": "bool" }
+        ],
+        "internalType": "struct EmployeePerformanceAudit.Evaluation",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "promotionId", "type": "string" }
+    ],
+    "name": "getPromotion",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "string", "name": "promotionId", "type": "string" },
+          { "internalType": "string", "name": "evaluationId", "type": "string" },
+          { "internalType": "string", "name": "employeeId", "type": "string" },
+          { "internalType": "bytes32", "name": "promotionHash", "type": "bytes32" },
+          { "internalType": "uint8", "name": "status", "type": "uint8" },
+          { "internalType": "address", "name": "approvedBy", "type": "address" },
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "bool", "name": "exists", "type": "bool" }
+        ],
+        "internalType": "struct EmployeePerformanceAudit.Promotion",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "hrUsers",
+    "outputs": [
+      { "internalType": "bool", "name": "", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "managers",
+    "outputs": [
+      { "internalType": "bool", "name": "", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "evaluationId", "type": "string" }
+    ],
+    "name": "recommendPromotion",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "evaluationId", "type": "string" }
+    ],
+    "name": "reviewEvaluation",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "account", "type": "address" },
+      { "internalType": "bool", "name": "isManager", "type": "bool" },
+      { "internalType": "bool", "name": "isHR", "type": "bool" },
+      { "internalType": "bool", "name": "isDirector", "type": "bool" }
+    ],
+    "name": "setRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "internalType": "string", "name": "employeeId", "type": "string" },
+      { "internalType": "bytes32", "name": "documentHash", "type": "bytes32" }
+    ],
+    "name": "submitEvaluation",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "evaluationId", "type": "string" },
+      { "internalType": "bytes32", "name": "documentHash", "type": "bytes32" }
+    ],
+    "name": "verifyDocument",
+    "outputs": [
+      { "internalType": "bool", "name": "", "type": "bool" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Roles ────────────────────────────────────────────────────────────────────
+enum Role {
+  HR
+  Manager
+  Director
+  Employee
+}
+
+// ── Evaluation Status ────────────────────────────────────────────────────────
+enum EvaluationStatus {
+  Draft
+  Submitted
+  Reviewed
+  Approved
+  PromotionRecommended
+  PromotionApproved
+}
+
+// ── Promotion Status ─────────────────────────────────────────────────────────
+enum PromotionStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+// ── Blockchain Sync Status ───────────────────────────────────────────────────
+enum BlockchainSyncStatus {
+  Pending
+  Success
+  Failed
+}
+
+// ── Users (login accounts) ───────────────────────────────────────────────────
+// wallet_address: disimpan di sini — HR assign wallet ke setiap user
+model User {
+  id             String    @id @default(uuid())
+  name           String
+  email          String    @unique
+  passwordHash   String
+  role           Role
+  walletAddress  String?   @unique
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  employee       Employee?  // satu user bisa jadi employee
+  evaluationsAsManager   Evaluation[]  @relation("ManagerEvaluations")
+  promotionsRequested    Promotion[]   @relation("PromotionRequester")
+  promotionsApproved     Promotion[]   @relation("PromotionApprover")
+  auditLogs      AuditLog[]
+
+  @@index([email])
+  @@index([walletAddress])
+}
+
+// ── Departments ───────────────────────────────────────────────────────────────
+model Department {
+  id             String    @id @default(uuid())
+  name           String    @unique
+  createdAt      DateTime  @default(now())
+
+  employees      Employee[]
+  positions      Position[]
+}
+
+// ── Positions ─────────────────────────────────────────────────────────────────
+model Position {
+  id             String    @id @default(uuid())
+  name           String
+  level          Int       @default(1)
+  departmentId   String
+  department     Department @relation(fields: [departmentId], references: [id])
+  createdAt      DateTime  @default(now())
+
+  employees      Employee[]
+  promotionTargets Promotion[] @relation("TargetPosition")
+}
+
+// ── Employees ─────────────────────────────────────────────────────────────────
+// Data karyawan — phone & address dienkripsi AES-256
+model Employee {
+  id               String    @id @default(uuid())
+  employeeCode     String    @unique
+  fullName         String
+  phoneEncrypted   String    // AES-256 encrypted
+  addressEncrypted String    // AES-256 encrypted
+  departmentId     String
+  department       Department @relation(fields: [departmentId], references: [id])
+  positionId       String
+  position         Position  @relation(fields: [positionId], references: [id])
+  hireDate         DateTime
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+
+  // Link ke user account
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id])
+
+  // Relations
+  evaluations      Evaluation[]
+  promotions       Promotion[]
+
+  @@index([employeeCode])
+}
+
+// ── Evaluation Periods ────────────────────────────────────────────────────────
+model EvaluationPeriod {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  evaluations Evaluation[]
+}
+
+// ── Evaluations ───────────────────────────────────────────────────────────────
+model Evaluation {
+  id                  String           @id @default(uuid())
+  employeeId          String
+  employee            Employee         @relation(fields: [employeeId], references: [id])
+  managerId           String
+  manager             User             @relation("ManagerEvaluations", fields: [managerId], references: [id])
+  periodId            String
+  period              EvaluationPeriod @relation(fields: [periodId], references: [id])
+  totalScore          Float
+  commentEncrypted    String           // AES-256 encrypted
+  documentHash        String           // SHA-256 hash
+  status              EvaluationStatus @default(Submitted)
+  blockchainStatus    BlockchainSyncStatus @default(Pending)
+  blockchainTxHash    String?
+  blockchainBlockNum  Int?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // Relations
+  details             EvaluationDetail[]
+  promotions          Promotion[]
+  blockchainTxs       BlockchainTransaction[]
+
+  @@index([employeeId])
+  @@index([managerId])
+}
+
+// ── Evaluation Details (per KPI indicator) ────────────────────────────────────
+model EvaluationDetail {
+  id           String     @id @default(uuid())
+  evaluationId String
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  indicator    String     // Discipline, Communication, Leadership, dll
+  score        Int        // 0-100
+  weight       Float      // 0-1
+  notes        String?
+}
+
+// ── Promotions ────────────────────────────────────────────────────────────────
+model Promotion {
+  id                String         @id @default(uuid())
+  evaluationId      String
+  evaluation        Evaluation     @relation(fields: [evaluationId], references: [id])
+  employeeId        String
+  employee          Employee       @relation(fields: [employeeId], references: [id])
+  targetPositionId  String
+  targetPosition    Position       @relation("TargetPosition", fields: [targetPositionId], references: [id])
+  reasonEncrypted   String         // AES-256 encrypted
+  status            PromotionStatus @default(Pending)
+  requestedById     String
+  requestedBy       User           @relation("PromotionRequester", fields: [requestedById], references: [id])
+  approvedById      String?
+  approvedBy        User?          @relation("PromotionApprover", fields: [approvedById], references: [id])
+  blockchainTxHash  String?
+  promotionHash     String?        // SHA-256 hash untuk blockchain
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  blockchainTxs     BlockchainTransaction[]
+}
+
+// ── Blockchain Transactions ───────────────────────────────────────────────────
+// Menyimpan metadata setiap transaksi ke smart contract
+model BlockchainTransaction {
+  id              String               @id @default(uuid())
+  evaluationId    String?
+  evaluation      Evaluation?          @relation(fields: [evaluationId], references: [id])
+  promotionId     String?
+  promotion       Promotion?           @relation(fields: [promotionId], references: [id])
+  contractAddress String
+  transactionHash String               @unique
+  blockNumber     Int?
+  walletAddress   String
+  network         String               @default("sepolia")
+  action          String               // submitEvaluation, reviewEvaluation, dll
+  syncStatus      BlockchainSyncStatus @default(Pending)
+  createdAt       DateTime             @default(now())
+
+  @@index([transactionHash])
+  @@index([evaluationId])
+}
+
+// ── Audit Logs ────────────────────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  activity  String
+  detail    String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

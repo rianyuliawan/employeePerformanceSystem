@@ -1,0 +1,17 @@
+{
+  "name": "employee-performance-system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspace backend",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}
+

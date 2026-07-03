@@ -1,0 +1,8 @@
+{
+  "network": "sepolia",
+  "contractName": "EmployeePerformanceAudit",
+  "contractAddress": "0x4318928514534c6f2C7a7e9262d82F4569c1E7Af",
+  "deployedAt": "2026-07-03",
+  "chainId": 11155111,
+  "explorerUrl": "https://sepolia.etherscan.io/address/0x4318928514534c6f2C7a7e9262d82F4569c1E7Af"
+}
