@@ -7,10 +7,12 @@ import {
   assignWalletController,
   listWalletsController,
   walletCheckController,
+  changePasswordController,
+  resetPasswordController,
 } from "../controllers/auth.controller.js";
 import { authMiddleware, roleMiddleware } from "../middlewares/auth.middleware.js";
 import { validateBody } from "../middlewares/validation.middleware.js";
-import { loginSchema, walletLoginSchema } from "../validation/schemas.js";
+import { loginSchema, walletLoginSchema, changePasswordSchema, resetPasswordSchema } from "../validation/schemas.js";
 
 export const authRoutes = Router();
 
@@ -29,4 +31,14 @@ authRoutes.post("/wallet-login", validateBody(walletLoginSchema), walletLoginCon
 // ── Wallet management (requires JWT login) ────────────────────────────────
 authRoutes.post("/assign-wallet", authMiddleware, roleMiddleware(["HR", "Director"]), assignWalletController);
 authRoutes.get("/wallets", authMiddleware, roleMiddleware(["HR", "Director"]), listWalletsController);
+
+// ── Password management ──────────────────────────────────────────────────
+authRoutes.put("/change-password", authMiddleware, validateBody(changePasswordSchema), changePasswordController);
+authRoutes.put(
+  "/reset-password",
+  authMiddleware,
+  roleMiddleware(["HR", "Director"]),
+  validateBody(resetPasswordSchema),
+  resetPasswordController
+);
 

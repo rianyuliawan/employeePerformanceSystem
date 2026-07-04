@@ -39,8 +39,29 @@ async function main() {
     update: {},
     create: { name: "Management" },
   });
+  const finance = await prisma.department.upsert({
+    where: { name: "Finance & Accounting" },
+    update: {},
+    create: { name: "Finance & Accounting" },
+  });
+  const marketing = await prisma.department.upsert({
+    where: { name: "Marketing & Sales" },
+    update: {},
+    create: { name: "Marketing & Sales" },
+  });
+  const operations = await prisma.department.upsert({
+    where: { name: "Operations" },
+    update: {},
+    create: { name: "Operations" },
+  });
+  const legal = await prisma.department.upsert({
+    where: { name: "Legal & Compliance" },
+    update: {},
+    create: { name: "Legal & Compliance" },
+  });
 
   // ── Positions ────────────────────────────────────────────────────────────────
+  // Existing IDs kept exactly as-is — they're already referenced by live data.
   const seniorDev = await prisma.position.upsert({
     where: { id: "pos-senior-dev" },
     update: {},
@@ -66,6 +87,58 @@ async function main() {
     update: {},
     create: { id: "pos-director", name: "Director", level: 5, departmentId: management.id },
   });
+
+  // A few more rungs on the existing Engineering & HR ladders.
+  await prisma.position.upsert({
+    where: { id: "pos-swe" }, update: {},
+    create: { id: "pos-swe", name: "Software Engineer", level: 2, departmentId: engineering.id },
+  });
+  await prisma.position.upsert({
+    where: { id: "pos-eng-head" }, update: {},
+    create: { id: "pos-eng-head", name: "Head of Engineering", level: 5, departmentId: engineering.id },
+  });
+  await prisma.position.upsert({
+    where: { id: "pos-hr-staff" }, update: {},
+    create: { id: "pos-hr-staff", name: "HR Staff", level: 1, departmentId: hr.id },
+  });
+  await prisma.position.upsert({
+    where: { id: "pos-hr-sup" }, update: {},
+    create: { id: "pos-hr-sup", name: "HR Supervisor", level: 3, departmentId: hr.id },
+  });
+  await prisma.position.upsert({
+    where: { id: "pos-hr-mgr" }, update: {},
+    create: { id: "pos-hr-mgr", name: "HR Manager", level: 4, departmentId: hr.id },
+  });
+  await prisma.position.upsert({
+    where: { id: "pos-hr-head" }, update: {},
+    create: { id: "pos-hr-head", name: "Head of HR", level: 5, departmentId: hr.id },
+  });
+
+  // Generic 6-level career ladder (Staff → Officer → Senior → Supervisor → Manager → Head)
+  // for the newly added departments.
+  const genericLadder = (slug: string, departmentId: string, titles: [string, string, string, string, string, string]) =>
+    Promise.all(
+      titles.map((name, i) =>
+        prisma.position.upsert({
+          where: { id: `pos-${slug}-${i + 1}` },
+          update: {},
+          create: { id: `pos-${slug}-${i + 1}`, name, level: i + 1, departmentId },
+        })
+      )
+    );
+
+  await genericLadder("fin", finance.id, [
+    "Staff Finance", "Finance Officer", "Senior Accountant", "Finance Supervisor", "Finance Manager", "Head of Finance",
+  ]);
+  await genericLadder("mkt", marketing.id, [
+    "Staff Marketing", "Marketing Officer", "Senior Marketing Specialist", "Marketing Supervisor", "Marketing Manager", "Head of Marketing",
+  ]);
+  await genericLadder("ops", operations.id, [
+    "Staff Operations", "Operations Officer", "Senior Operations Specialist", "Operations Supervisor", "Operations Manager", "Head of Operations",
+  ]);
+  await genericLadder("legal", legal.id, [
+    "Staff Legal", "Legal Officer", "Senior Legal Officer", "Legal Supervisor", "Legal Manager", "Head of Legal",
+  ]);
 
   // ── Evaluation Period ────────────────────────────────────────────────────────
   const period2026 = await prisma.evaluationPeriod.upsert({

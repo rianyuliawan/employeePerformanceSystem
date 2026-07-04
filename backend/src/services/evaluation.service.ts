@@ -2,7 +2,7 @@ import { prisma } from "../database/prisma.js";
 import { encrypt, decrypt } from "../crypto/aes.service.js";
 import { generateSHA256 } from "../crypto/hash.service.js";
 import { ContractService } from "../blockchain/contract.service.js";
-import type { EvaluationStatus } from "@prisma/client";
+import type { Evaluation, EvaluationStatus } from "@prisma/client";
 
 const contractService = new ContractService();
 
@@ -36,7 +36,7 @@ export async function createEvaluation(data: {
   const documentHash = generateSHA256(docContent);
 
   // Save to DB first
-  const evaluation = await prisma.evaluation.create({
+  let evaluation = await prisma.evaluation.create({
     data: {
       employeeId: data.employeeId,
       managerId: data.managerId,
@@ -58,31 +58,40 @@ export async function createEvaluation(data: {
     include: { details: true, employee: { include: { user: true } }, manager: true },
   });
 
-  // Send to blockchain (non-blocking)
-  contractService
-    .submitEvaluation(evaluation.id, data.employeeId, documentHash)
-    .then(async (receipt) => {
-      await prisma.evaluation.update({
-        where: { id: evaluation.id },
-        data: {
-          blockchainStatus: receipt.status,
-          blockchainTxHash: receipt.transactionHash,
-          blockchainBlockNum: receipt.blockNumber,
-        },
-      });
-      await prisma.blockchainTransaction.create({
-        data: {
-          evaluationId: evaluation.id,
-          contractAddress: process.env.SMART_CONTRACT_ADDRESS ?? "",
-          transactionHash: receipt.transactionHash,
-          blockNumber: receipt.blockNumber,
-          walletAddress: data.managerId,
-          action: "submitEvaluation",
-          syncStatus: receipt.status,
-        },
-      });
-    })
-    .catch(() => undefined); // failure → stays Pending
+  // Awaited (not fire-and-forget): later actions on this evaluation
+  // (review/approve/recommend) call the contract expecting this submission
+  // to already exist on-chain — if we returned before it landed, those
+  // calls would revert with "Evaluation not found".
+  try {
+    const receipt = await contractService.submitEvaluation(evaluation.id, data.employeeId, documentHash);
+    evaluation = await prisma.evaluation.update({
+      where: { id: evaluation.id },
+      data: {
+        blockchainStatus: receipt.status,
+        blockchainTxHash: receipt.transactionHash,
+        blockchainBlockNum: receipt.blockNumber,
+      },
+      include: { details: true, employee: { include: { user: true } }, manager: true },
+    });
+    await prisma.blockchainTransaction.create({
+      data: {
+        evaluationId: evaluation.id,
+        contractAddress: process.env.SMART_CONTRACT_ADDRESS ?? "",
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber,
+        walletAddress: data.managerId,
+        action: "submitEvaluation",
+        syncStatus: receipt.status,
+      },
+    });
+  } catch (err) {
+    console.error(`submitEvaluation on-chain call failed for evaluation ${evaluation.id}:`, err);
+    evaluation = await prisma.evaluation.update({
+      where: { id: evaluation.id },
+      data: { blockchainStatus: "Failed" },
+      include: { details: true, employee: { include: { user: true } }, manager: true },
+    });
+  }
 
   return formatEvaluation(evaluation);
 }
@@ -135,16 +144,20 @@ export async function updateEvaluationStatus(
   });
 
   // Send blockchain event
+  const onChainError = (err: unknown) => {
+    console.error(`${action} on-chain call failed for evaluation ${id}:`, err);
+    return null;
+  };
   let receipt;
   switch (action) {
     case "review":
-      receipt = await contractService.reviewEvaluation(id).catch(() => null);
+      receipt = await contractService.reviewEvaluation(id).catch(onChainError);
       break;
     case "approve":
-      receipt = await contractService.approveEvaluation(id).catch(() => null);
+      receipt = await contractService.approveEvaluation(id).catch(onChainError);
       break;
     case "recommendPromotion":
-      receipt = await contractService.recommendPromotion(id).catch(() => null);
+      receipt = await contractService.recommendPromotion(id).catch(onChainError);
       break;
   }
 
@@ -178,7 +191,7 @@ export async function verifyEvaluation(id: string, documentText: string) {
 }
 
 // ── Format helper ─────────────────────────────────────────────────────────────
-function formatEvaluation(e: Record<string, unknown> & { commentEncrypted: string; details?: unknown[] }) {
+function formatEvaluation<T extends Evaluation & Record<string, unknown>>(e: T) {
   const { commentEncrypted, ...rest } = e;
   let comment = "";
   try { comment = decrypt(commentEncrypted); } catch { comment = ""; }

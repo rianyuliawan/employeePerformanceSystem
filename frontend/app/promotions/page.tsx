@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Send, TrendingUp, CheckCircle, XCircle, ShieldCheck } from "lucide-react";
+import { Send, TrendingUp, CheckCircle, XCircle, ShieldCheck, FileDown, FileSearch } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
@@ -66,6 +66,41 @@ export default function PromotionsPage() {
     }
   }
 
+  async function handleDownloadCertificate(id: string, skNumber?: string) {
+    try {
+      const res = await api.get(`/promotions/${id}/certificate`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${(skNumber ?? "SK-Promosi").replace(/\//g, "-")}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert("Gagal mengunduh SK: " + (e.response?.data?.message ?? e.message));
+    }
+  }
+
+  async function handleVerifyDocument(id: string, file: File) {
+    const form = new FormData();
+    form.append("document", file);
+    try {
+      const res = await api.post(`/promotions/${id}/verify-document`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const { verdict, uploadedHash, dbHash, onChainHash } = res.data.data;
+      alert(
+        `Hasil Verifikasi Dokumen:\n\n${verdict}\n\n` +
+        `Hash file yang diunggah : ${uploadedHash}\n` +
+        `Hash di database        : ${dbHash}\n` +
+        `Hash di blockchain      : ${onChainHash ?? "(tidak tersedia)"}`
+      );
+    } catch (e: any) {
+      alert("Gagal memverifikasi dokumen: " + (e.response?.data?.message ?? e.message));
+    }
+  }
+
   return (
     <AppShell title="Manajemen Promosi">
       {role === "Manager" && (
@@ -116,7 +151,7 @@ export default function PromotionsPage() {
       )}
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-x-auto p-2">
-        <table className="w-full min-w-[1000px] text-left text-sm">
+        <table className="w-full min-w-[1200px] text-left text-sm">
           <thead>
             <tr className="text-slate-400">
               <th className="px-4 py-3 font-medium">Karyawan</th>
@@ -124,14 +159,15 @@ export default function PromotionsPage() {
               <th className="px-4 py-3 font-medium">Target Jabatan</th>
               <th className="px-4 py-3 font-medium">Pengaju</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Dokumen SK</th>
               {role === "Director" && <th className="px-4 py-3 font-medium">Aksi</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="py-8 text-center text-slate-400">Loading...</td></tr>
+              <tr><td colSpan={7} className="py-8 text-center text-slate-400">Loading...</td></tr>
             ) : promotions.length === 0 ? (
-              <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada pengajuan promosi.</td></tr>
+              <tr><td colSpan={7} className="py-8 text-center text-slate-400">Belum ada pengajuan promosi.</td></tr>
             ) : promotions.map((prom) => (
               <tr key={prom.id} className="border-b border-slate-50 hover:bg-slate-50/80">
                 <td className="px-4 py-4">
@@ -151,6 +187,43 @@ export default function PromotionsPage() {
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${STATUS_COLOR[prom.status] ?? "bg-slate-100"}`}>
                     {prom.status}
                   </span>
+                </td>
+                <td className="px-4 py-4">
+                  {prom.status === "Approved" && prom.skNumber ? (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="font-mono text-[11px] text-slate-500">{prom.skNumber}</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          className="h-7 text-xs !px-2"
+                          onClick={() => handleDownloadCertificate(prom.id, prom.skNumber)}
+                          title="Unduh Surat Keputusan (PDF)"
+                        >
+                          <FileDown className="h-3 w-3" /> Unduh SK
+                        </Button>
+                        <label
+                          className="flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 px-2 text-xs text-slate-600 hover:bg-slate-50"
+                          title="Unggah PDF untuk memverifikasi keasliannya"
+                        >
+                          <FileSearch className="h-3 w-3" /> Verifikasi
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleVerifyDocument(prom.id, file);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ) : prom.status === "Approved" ? (
+                    <span className="text-xs text-slate-400 italic">Disetujui sebelum fitur SK tersedia</span>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">Belum tersedia</span>
+                  )}
                 </td>
                 {role === "Director" && (
                   <td className="px-4 py-4 flex gap-2">

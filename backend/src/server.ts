@@ -1,3 +1,7 @@
+// Must be imported before express/routers are used: patches Express so a
+// rejected promise inside an async route handler reaches errorMiddleware
+// instead of becoming an unhandled rejection that crashes the whole process.
+import "express-async-errors";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";

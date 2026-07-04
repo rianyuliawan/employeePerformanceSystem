@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { ShieldCheck, Wallet, RefreshCw } from "lucide-react";
+import { ShieldCheck, Wallet, RefreshCw, KeyRound, UserCog } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
@@ -33,7 +33,7 @@ export default function SettingsPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const address = String(form.get("walletAddress"));
-    
+
     try {
       await api.post("/employees/assign-wallet", {
         userId,
@@ -46,8 +46,96 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleChangePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const currentPassword = String(data.get("currentPassword"));
+    const newPassword = String(data.get("newPassword"));
+    try {
+      await api.put("/auth/change-password", { currentPassword, newPassword });
+      alert("Password berhasil diubah.");
+      form.reset();
+    } catch (e: any) {
+      alert("Error: " + (e.response?.data?.message ?? e.message));
+    }
+  }
+
+  async function handleResetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const userId = String(data.get("userId"));
+    const newPassword = String(data.get("resetNewPassword"));
+    try {
+      const res = await api.put("/auth/reset-password", { userId, newPassword });
+      alert(res.data.message ?? "Password user berhasil di-reset.");
+      form.reset();
+    } catch (e: any) {
+      alert("Error: " + (e.response?.data?.message ?? e.message));
+    }
+  }
+
   return (
     <AppShell title="Pengaturan Sistem">
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <KeyRound className="h-5 w-5 text-indigo-600" />
+            Ganti Password Saya
+          </h3>
+          <form onSubmit={handleChangePassword} className="mt-4 space-y-3">
+            <input
+              name="currentPassword"
+              type="password"
+              placeholder="Password saat ini"
+              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-500"
+              required
+            />
+            <input
+              name="newPassword"
+              type="password"
+              placeholder="Password baru (min. 6 karakter)"
+              minLength={6}
+              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-500"
+              required
+            />
+            <Button type="submit" className="w-full">Ganti Password</Button>
+          </form>
+        </div>
+
+        {(role === "HR" || role === "Director") && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+              <UserCog className="h-5 w-5 text-indigo-600" />
+              Reset Password User Lain
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">Untuk user yang lupa password. Tidak perlu email — password baru langsung aktif.</p>
+            <form onSubmit={handleResetPassword} className="mt-4 space-y-3">
+              <select
+                name="userId"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-indigo-500 focus:bg-white"
+                required
+              >
+                <option value="">Pilih user...</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                ))}
+              </select>
+              <input
+                name="resetNewPassword"
+                type="password"
+                placeholder="Password baru untuk user ini (min. 6 karakter)"
+                minLength={6}
+                className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-500"
+                required
+              />
+              <Button type="submit" variant="secondary" className="w-full">Reset Password</Button>
+            </form>
+          </div>
+        )}
+      </div>
+
       <div className="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-6">
         <h3 className="flex items-center gap-2 text-lg font-bold text-indigo-900">
           <ShieldCheck className="h-5 w-5" />

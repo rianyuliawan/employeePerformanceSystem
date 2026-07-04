@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { prisma } from "../database/prisma.js";
 import { encrypt, decrypt } from "../crypto/aes.service.js";
 
@@ -68,7 +69,6 @@ export async function createEmployee(data: {
   password: string;
   role?: string;
 }) {
-  const bcrypt = await import("bcryptjs");
   const passwordHash = await bcrypt.hash(data.password, 10);
 
   // Create user first
@@ -129,6 +129,13 @@ export async function assignWalletToUser(userId: string, walletAddress: string) 
     where: { id: userId },
     data: { walletAddress },
   });
+}
+
+// Evaluation/Promotion records key off Employee.id, not User.id — this
+// resolves the Employee record linked to a logged-in user's account.
+export async function getEmployeeIdByUserId(userId: string): Promise<string | null> {
+  const employee = await prisma.employee.findUnique({ where: { userId } });
+  return employee?.id ?? null;
 }
 
 export async function listDepartments() {

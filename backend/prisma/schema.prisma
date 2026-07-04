@@ -182,7 +182,9 @@ model Promotion {
   approvedById      String?
   approvedBy        User?          @relation("PromotionApprover", fields: [approvedById], references: [id])
   blockchainTxHash  String?
-  promotionHash     String?        // SHA-256 hash untuk blockchain
+  promotionHash     String?        // SHA-256 hash of the generated decree PDF, anchored on-chain
+  skNumber          String?        // Nomor Surat Keputusan (display only)
+  documentPath      String?        // Relative path to the generated decree PDF on disk
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

@@ -2,7 +2,19 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LockKeyhole, Mail, Wallet, AlertCircle, Loader2, CheckCircle2, ExternalLink } from "lucide-react";
+import axios from "axios";
+import {
+  LockKeyhole,
+  Mail,
+  Wallet,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  ExternalLink,
+  ShieldCheck,
+  Link2,
+  FileCheck2,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { connectWallet, switchToSepolia, signMessage, isMetaMaskInstalled, shortenAddress, SEPOLIA_CHAIN_ID } from "@/lib/wallet";
 
@@ -17,8 +29,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   // Email login state
-  const [email, setEmail] = useState("manager@company.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   // Wallet login state
   const [walletAddress, setWalletAddress] = useState("");
@@ -35,8 +47,12 @@ export default function LoginPage() {
       const response = await api.post("/auth/login", { email, password });
       window.sessionStorage.setItem("accessToken", response.data.data.accessToken);
       router.push("/dashboard");
-    } catch {
-      setError("Email atau password tidak valid.");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && !err.response) {
+        setError("Tidak bisa terhubung ke server. Pastikan backend sedang berjalan.");
+      } else {
+        setError("Email atau password tidak valid.");
+      }
     } finally {
       setLoading(false);
     }
@@ -112,23 +128,78 @@ export default function LoginPage() {
   const isOnSepolia = chainId === SEPOLIA_CHAIN_ID;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
+    <main className="relative min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center px-4 py-10 overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-          {/* Header */}
-          <div className="text-center mb-8">
+      <div className="relative w-full max-w-5xl grid lg:grid-cols-2 rounded-3xl overflow-hidden shadow-2xl shadow-black/40 border border-white/10">
+        {/* ── Branding panel (desktop only) ─────────────────────── */}
+        <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 p-10 relative">
+          <div className="absolute inset-0 opacity-[0.07] bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] bg-[length:24px_24px]" />
+
+          <div className="relative">
+            <div className="inline-flex items-center gap-2.5 mb-10">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                <Wallet className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-white font-bold tracking-tight">Employee Performance System</span>
+            </div>
+
+            <h2 className="text-3xl font-bold text-white leading-tight mb-4">
+              Penilaian kinerja yang <span className="text-indigo-400">transparan</span> &amp; tidak bisa dimanipulasi
+            </h2>
+            <p className="text-slate-400 text-sm leading-relaxed max-w-sm">
+              Setiap evaluasi, kenaikan pangkat, dan dokumen resmi diamankan dengan kriptografi dan tercatat
+              di blockchain — jejaknya permanen dan bisa diverifikasi siapa saja.
+            </p>
+          </div>
+
+          <div className="relative space-y-5 mt-10">
+            <FeatureItem
+              icon={ShieldCheck}
+              title="Enkripsi AES-256-GCM"
+              desc="Data pribadi karyawan tidak pernah tersimpan dalam bentuk terbuka."
+            />
+            <FeatureItem
+              icon={Link2}
+              title="Tercatat di Blockchain Sepolia"
+              desc="Setiap keputusan penilaian & promosi tidak bisa diubah diam-diam."
+            />
+            <FeatureItem
+              icon={FileCheck2}
+              title="Surat Keputusan Digital"
+              desc="Dokumen resmi dengan hash yang bisa diverifikasi kapan saja."
+            />
+          </div>
+
+          <a
+            href="https://sepolia.etherscan.io/address/0x4318928514534c6f2C7a7e9262d82F4569c1E7Af"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative flex items-center gap-1.5 text-xs text-slate-600 hover:text-indigo-400 transition-colors mt-10 font-mono"
+          >
+            <ExternalLink className="w-3 h-3" />
+            0x4318...E7Af on Sepolia Testnet
+          </a>
+        </div>
+
+        {/* ── Login card ───────────────────────────────────────── */}
+        <div className="bg-white/[0.04] backdrop-blur-xl p-8 sm:p-10 flex flex-col justify-center">
+          {/* Header (compact, always visible) */}
+          <div className="text-center mb-8 lg:hidden">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-indigo-600/20 border border-indigo-500/30 mb-4">
               <Wallet className="w-7 h-7 text-indigo-400" />
             </div>
             <h1 className="text-2xl font-bold text-white">Employee Performance System</h1>
             <p className="text-slate-400 text-sm mt-1">Blockchain-powered evaluation platform</p>
+          </div>
+          <div className="hidden lg:block mb-8">
+            <h1 className="text-xl font-bold text-white">Masuk ke akun Anda</h1>
+            <p className="text-slate-400 text-sm mt-1">Pilih metode login di bawah ini.</p>
           </div>
 
           {/* Mode Tabs */}
@@ -264,7 +335,8 @@ export default function LoginPage() {
                     className="w-full bg-transparent text-white text-sm outline-none placeholder:text-slate-600"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@company.com"
+                    placeholder="nama@company.com"
+                    autoComplete="username"
                   />
                 </div>
               </div>
@@ -278,6 +350,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
@@ -289,7 +362,9 @@ export default function LoginPage() {
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LockKeyhole className="w-4 h-4" />}
                 {loading ? "Masuk..." : "Login"}
               </button>
-              <p className="text-xs text-slate-500 text-center">Demo: manager@company.com / password123</p>
+              <p className="text-xs text-slate-500 text-center">
+                Lupa kredensial akun? Hubungi tim HR perusahaan Anda.
+              </p>
             </form>
           )}
 
@@ -300,27 +375,27 @@ export default function LoginPage() {
               <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
-        </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-600 mt-4">
-          Contract:{" "}
-          <a
-            href="https://sepolia.etherscan.io/address/0x4318928514534c6f2C7a7e9262d82F4569c1E7Af"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-500 hover:text-indigo-400 font-mono"
-          >
-            0x4318...E7Af
-          </a>{" "}
-          on Sepolia
-        </p>
+          {/* Footer (mobile only — desktop has it in the branding panel) */}
+          <p className="text-center text-xs text-slate-600 mt-6 lg:hidden">
+            Contract:{" "}
+            <a
+              href="https://sepolia.etherscan.io/address/0x4318928514534c6f2C7a7e9262d82F4569c1E7Af"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-500 hover:text-indigo-400 font-mono"
+            >
+              0x4318...E7Af
+            </a>{" "}
+            on Sepolia
+          </p>
+        </div>
       </div>
     </main>
   );
 }
 
-// ── Helper component ──────────────────────────────────────────────
+// ── Helper components ──────────────────────────────────────────────
 function StepDot({ active, done, n, label }: { active: boolean; done: boolean; n: number; label: string }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
@@ -338,6 +413,28 @@ function StepDot({ active, done, n, label }: { active: boolean; done: boolean; n
       <span className={`text-[10px] ${active ? "text-indigo-400" : done ? "text-green-400" : "text-slate-600"}`}>
         {label}
       </span>
+    </div>
+  );
+}
+
+function FeatureItem({
+  icon: Icon,
+  title,
+  desc,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-indigo-400" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{desc}</p>
+      </div>
     </div>
   );
 }

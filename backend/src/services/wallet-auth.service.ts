@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { ethers } from "ethers";
 import jwt from "jsonwebtoken";
 import { prisma } from "../database/prisma.js";
@@ -10,7 +11,7 @@ const nonceStore = new Map<string, { nonce: string; expiresAt: number }>();
 export function generateNonce(address: string): string {
   const nonce = [
     "Sign this message to login to EPS.",
-    `Nonce: ${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
+    `Nonce: ${crypto.randomBytes(16).toString("hex")}`,
     `Timestamp: ${Date.now()}`,
     `Address: ${address.toLowerCase()}`,
   ].join("\n");
@@ -18,7 +19,9 @@ export function generateNonce(address: string): string {
   return nonce;
 }
 
-export async function walletLogin(address: string, signature: string) {
+export type WalletLoginResult = { error: string } | { accessToken: string; user: AuthUser };
+
+export async function walletLogin(address: string, signature: string): Promise<WalletLoginResult> {
   const addr = address.toLowerCase();
   const entry = nonceStore.get(addr);
   if (!entry) return { error: "Nonce tidak ditemukan. Minta nonce baru." };
@@ -40,8 +43,10 @@ export async function walletLogin(address: string, signature: string) {
 
   nonceStore.delete(addr);
 
-  // Lookup from PostgreSQL by wallet_address
-  const user = await prisma.user.findUnique({ where: { walletAddress: address } });
+  // Lookup from PostgreSQL by wallet_address (case-insensitive)
+  const user = await prisma.user.findFirst({
+    where: { walletAddress: { equals: addr, mode: "insensitive" } },
+  });
   if (!user || !user.isActive) {
     return { error: `Wallet ${address} belum terdaftar. HR perlu assign wallet ini ke user.` };
   }
@@ -59,7 +64,9 @@ export async function walletLogin(address: string, signature: string) {
 }
 
 export async function isWalletRegistered(address: string): Promise<boolean> {
-  const count = await prisma.user.count({ where: { walletAddress: address } });
+  const count = await prisma.user.count({
+    where: { walletAddress: { equals: address, mode: "insensitive" } },
+  });
   return count > 0;
 }
 

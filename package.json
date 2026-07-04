@@ -12,6 +12,9 @@
   "workspaces": [
     "backend",
     "frontend"
-  ]
+  ],
+  "overrides": {
+    "@types/express": "^4.17.21"
+  }
 }
 

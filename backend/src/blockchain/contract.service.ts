@@ -28,6 +28,17 @@ function mockReceipt(label: string): BlockchainReceipt {
   };
 }
 
+// A SHA-256 digest is already exactly 32 bytes (64 hex chars) — it must be
+// passed to the contract as raw bytes, not re-encoded as UTF-8 text and
+// truncated (that would silently keep only the first 16 bytes of the hash).
+export function hashToBytes32(hexHash: string): string {
+  const normalized = hexHash.startsWith("0x") ? hexHash.slice(2) : hexHash;
+  if (!/^[0-9a-fA-F]{64}$/.test(normalized)) {
+    throw new Error(`Expected a 32-byte (64 hex char) SHA-256 hash, got: ${hexHash}`);
+  }
+  return `0x${normalized}`;
+}
+
 export class ContractService {
   async submitEvaluation(
     evaluationId: string,
@@ -37,7 +48,7 @@ export class ContractService {
     const contract = getContract();
     if (!contract) return mockReceipt(`submit-${evaluationId}`);
 
-    const hash32 = ethers.zeroPadBytes(ethers.toUtf8Bytes(documentHash).slice(0, 32), 32);
+    const hash32 = hashToBytes32(documentHash);
     const tx = await contract.submitEvaluation(evaluationId, employeeId, hash32);
     const receipt = await tx.wait();
     return {
@@ -94,7 +105,7 @@ export class ContractService {
     const contract = getContract();
     if (!contract) return mockReceipt(`promotion-${promotionId}`);
 
-    const hash32 = ethers.zeroPadBytes(ethers.toUtf8Bytes(promotionHash).slice(0, 32), 32);
+    const hash32 = hashToBytes32(promotionHash);
     const tx = await contract.approvePromotion(promotionId, evaluationId, hash32);
     const receipt = await tx.wait();
     return {
@@ -110,7 +121,7 @@ export class ContractService {
       // fallback: simple string compare
       return documentHash.length > 0;
     }
-    const hash32 = ethers.zeroPadBytes(ethers.toUtf8Bytes(documentHash).slice(0, 32), 32);
+    const hash32 = hashToBytes32(documentHash);
     const result: boolean = await contract.verifyDocument(evaluationId, hash32);
     return result;
   }
@@ -120,6 +131,17 @@ export class ContractService {
     if (!contract) return null;
     try {
       const data = await contract.getEvaluation(evaluationId);
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  async getPromotionOnChain(promotionId: string) {
+    const contract = getContract();
+    if (!contract) return null;
+    try {
+      const data = await contract.getPromotion(promotionId);
       return data;
     } catch {
       return null;

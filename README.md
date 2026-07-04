@@ -36,8 +36,18 @@ Backend menyediakan login demo tanpa database untuk pengujian awal:
 
 ## Security Notes
 
-- Password harus disimpan dengan bcrypt pada implementasi database penuh.
-- Data sensitif menggunakan AES-256-GCM di backend.
-- Hash dokumen/evaluasi menggunakan SHA-256 dan dicatat ke smart contract.
-- Private key pengguna tidak disimpan di backend. Transaksi produksi harus ditandatangani melalui MetaMask di frontend.
+- Password disimpan dengan bcrypt.
+- Data sensitif (telepon, alamat, komentar evaluasi, alasan promosi) dienkripsi AES-256-GCM di backend.
+- Hash dokumen/evaluasi/SK menggunakan SHA-256 dan dicatat ke smart contract di Sepolia testnet.
+- Login wallet (MetaMask) memverifikasi kepemilikan wallet lewat tanda tangan ECDSA — private key pengguna tidak pernah meninggalkan MetaMask untuk proses **login**.
+
+## Known Limitations (belum production-ready)
+
+Proyek ini cocok untuk demo/skripsi, tapi ada beberapa keterbatasan arsitektur yang perlu diketahui sebelum dipakai serius:
+
+1. **Satu wallet menandatangani semua transaksi blockchain.** Berbeda dengan login (yang memang pakai MetaMask tiap user), **semua transaksi tulis ke smart contract** (submit evaluasi, review, approve, promosi) ditandatangani oleh **satu wallet deployer** yang private key-nya disimpan di `backend/.env` (`DEPLOYER_PRIVATE_KEY`) — bukan wallet pribadi Manager/HR/Director yang login. Ini artinya:
+   - Modifier `onlyManager`/`onlyHR`/`onlyDirector` di smart contract secara teknis semuanya dipegang oleh alamat wallet yang sama (milik sistem), bukan mencerminkan identitas wallet individual tiap role.
+   - Kalau server bocor, private key ini bisa disalahgunakan untuk memanggil fungsi kritikal kontrak.
+   - Desain yang lebih aman untuk produksi: tiap Manager/HR/Director punya wallet sendiri dan menandatangani transaksinya sendiri lewat MetaMask di frontend (mirip alur login wallet yang sudah ada) — ini perubahan arsitektur yang cukup besar dan sengaja belum dilakukan untuk menjaga kompleksitas proyek tetap sesuai kebutuhan skripsi/demo.
+2. Beberapa hal lain yang juga masih jadi catatan: penyimpanan file PDF SK di disk lokal server (bukan cloud storage), belum ada automated test/CI penuh, dan reset password admin belum lewat email (langsung set password baru oleh HR/Director).
 
