@@ -1,19 +1,18 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { prisma } from "../database/prisma.js";
 import { encrypt, decrypt } from "../crypto/aes.service.js";
 import { generateSHA256 } from "../crypto/hash.service.js";
 import { ContractService } from "../blockchain/contract.service.js";
 import { generatePromotionDecree } from "./document.service.js";
+import { uploadFile, downloadFile } from "./storage.service.js";
 
 const contractService = new ContractService();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROMOTION_UPLOAD_DIR = path.join(__dirname, "../../uploads/promotion");
+export function promotionCertificateStorageKey(promotionId: string): string {
+  return `promotions/${promotionId}.pdf`;
+}
 
-export function promotionCertificatePath(promotionId: string): string {
-  return path.join(PROMOTION_UPLOAD_DIR, `${promotionId}.pdf`);
+export async function getPromotionCertificateBuffer(promotionId: string): Promise<Buffer> {
+  return downloadFile(promotionCertificateStorageKey(promotionId));
 }
 
 export async function listPromotions(filter?: {
@@ -124,8 +123,8 @@ export async function approvePromotion(id: string, approvedById: string) {
   // Hash the exact PDF bytes once, at generation time — this is the value
   // anchored on-chain, so the decree file itself becomes tamper-evident.
   const hash = generateSHA256(pdfBuffer);
-  await fs.mkdir(PROMOTION_UPLOAD_DIR, { recursive: true });
-  await fs.writeFile(promotionCertificatePath(id), pdfBuffer);
+  const storageKey = promotionCertificateStorageKey(id);
+  await uploadFile(storageKey, pdfBuffer, "application/pdf");
 
   const updated = await prisma.promotion.update({
     where: { id },
@@ -134,7 +133,7 @@ export async function approvePromotion(id: string, approvedById: string) {
       approvedById,
       promotionHash: hash,
       skNumber,
-      documentPath: `uploads/promotion/${id}.pdf`,
+      documentPath: storageKey,
     },
     include: {
       employee: { include: { user: true, position: true } },

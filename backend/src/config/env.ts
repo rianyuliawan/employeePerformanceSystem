@@ -25,5 +25,8 @@ export const env = {
   rpcUrl: process.env.RPC_URL,
   smartContractAddress: process.env.SMART_CONTRACT_ADDRESS,
   deployerPrivateKey: process.env.DEPLOYER_PRIVATE_KEY,
+  supabaseUrl: process.env.SUPABASE_URL,
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "docs",
   nodeEnv,
 };

@@ -5,7 +5,7 @@ import {
   approvePromotion,
   rejectPromotion,
   getPromotionById,
-  promotionCertificatePath,
+  getPromotionCertificateBuffer,
 } from "../services/promotion.service.js";
 import { getEmployeeIdByUserId } from "../services/employee.service.js";
 import { logAudit } from "../services/audit.service.js";
@@ -95,9 +95,15 @@ export async function downloadCertificateController(req: Request, res: Response)
     return fail(res, "Dokumen SK belum tersedia — promosi ini belum disetujui.", 404);
   }
   const fileName = `SK-${promotion.skNumber ?? promotion.id}.pdf`.replace(/\//g, "-");
-  return res.download(promotionCertificatePath(promotion.id), fileName, (err) => {
-    if (err && !res.headersSent) fail(res, "Gagal mengunduh dokumen", 500);
-  });
+  try {
+    const buffer = await getPromotionCertificateBuffer(promotion.id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    return res.send(buffer);
+  } catch (err) {
+    console.error(`Failed to fetch certificate for promotion ${promotion.id}:`, err);
+    return fail(res, "Gagal mengunduh dokumen", 500);
+  }
 }
 
 /** POST /promotions/:id/verify-document — upload a PDF and check it against DB + blockchain */

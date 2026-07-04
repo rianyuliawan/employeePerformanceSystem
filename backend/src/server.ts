@@ -21,7 +21,13 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/v1", apiRoutes);
 app.use(errorMiddleware);
 
-app.listen(env.port, () => {
-  console.log(`Backend API running on http://localhost:${env.port}/api/v1`);
-});
+// On Vercel the app is invoked per-request via api/index.ts — listen() is
+// only needed for local dev / a traditional long-running server process.
+if (!process.env.VERCEL) {
+  app.listen(env.port, () => {
+    console.log(`Backend API running on http://localhost:${env.port}/api/v1`);
+  });
+}
+
+export default app;
 
