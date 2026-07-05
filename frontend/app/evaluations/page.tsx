@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Send, FileSignature, CheckCircle, ShieldCheck } from "lucide-react";
+import { Send, FileSignature, CheckCircle, ShieldCheck, FileSearch } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
@@ -73,6 +73,21 @@ export default function EvaluationsPage() {
       window.location.reload();
     } catch (e: any) {
       alert("Error: " + (e.response?.data?.message ?? e.message));
+    }
+  }
+
+  async function handleVerify(id: string) {
+    try {
+      const res = await api.post(`/evaluations/${id}/verify`, {});
+      const { verdict, storedHash, onChainHash, dbMatchesOnChain } = res.data.data;
+      alert(
+        `Hasil Verifikasi Evaluasi:\n\n${verdict}\n\n` +
+        `Hash di database   : ${storedHash}\n` +
+        `Hash di blockchain : ${onChainHash ?? "(tidak tersedia)"}\n` +
+        `Cocok? ${dbMatchesOnChain === null ? "tidak dapat dicek" : dbMatchesOnChain ? "Ya" : "Tidak"}`
+      );
+    } catch (e: any) {
+      alert("Gagal memverifikasi: " + (e.response?.data?.message ?? e.message));
     }
   }
 
@@ -158,6 +173,13 @@ export default function EvaluationsPage() {
                     <ShieldCheck className="h-4 w-4 shrink-0" />
                     <span className="font-mono text-xs">{ev.documentHash.slice(0, 16)}...</span>
                   </div>
+                  <button
+                    onClick={() => handleVerify(ev.id)}
+                    className="mt-1.5 flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600"
+                    title="Bandingkan hash di database dengan blockchain"
+                  >
+                    <FileSearch className="h-3 w-3" /> Verifikasi
+                  </button>
                 </td>
                 <td className="px-4 py-4">
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${STATUS_COLOR[ev.status] ?? "bg-slate-100"}`}>

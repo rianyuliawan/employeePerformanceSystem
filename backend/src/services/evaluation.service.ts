@@ -178,15 +178,46 @@ export async function updateEvaluationStatus(
   return formatEvaluation(updated);
 }
 
-export async function verifyEvaluation(id: string, documentText: string) {
+export async function verifyEvaluation(id: string, documentText?: string) {
   const evaluation = await prisma.evaluation.findUnique({ where: { id } });
   if (!evaluation) return null;
-  const hash = generateSHA256(documentText);
+
+  // Core check — always runs, no input needed: does the hash sitting in the
+  // database still match the immutable copy on-chain? This is what catches
+  // someone editing documentHash directly in the database to cover their
+  // tracks after tampering with the score/comment.
+  const onChain = await contractService.getEvaluationOnChain(id);
+  let onChainHash: string | null = null;
+  if (onChain?.documentHash) {
+    const raw = onChain.documentHash as string;
+    onChainHash = raw.startsWith("0x") ? raw.slice(2) : raw;
+  }
+  const dbMatchesOnChain = onChainHash !== null ? evaluation.documentHash === onChainHash : null;
+
+  // Optional secondary check — only if the caller supplies the exact original
+  // submission text to re-hash and compare against the stored hash.
+  const providedHash = documentText ? generateSHA256(documentText) : null;
+  const matchesDb = providedHash !== null ? providedHash === evaluation.documentHash : null;
+
+  let verdict: string;
+  if (dbMatchesOnChain === false) {
+    verdict = "PERINGATAN — hash di database TIDAK COCOK dengan blockchain. Kemungkinan data telah diubah langsung di database tanpa melalui sistem.";
+  } else if (matchesDb === false) {
+    verdict = "TIDAK COCOK — teks yang diberikan tidak cocok dengan hash yang tercatat.";
+  } else if (dbMatchesOnChain === true) {
+    verdict = "ASLI — hash di database cocok dengan blockchain, belum pernah diubah.";
+  } else {
+    verdict = "Blockchain tidak dapat diakses saat ini untuk pengecekan tambahan.";
+  }
+
   return {
-    valid: hash === evaluation.documentHash,
     storedHash: evaluation.documentHash,
-    providedHash: hash,
+    onChainHash,
+    dbMatchesOnChain,
+    providedHash,
+    matchesDb,
     blockchainTxHash: evaluation.blockchainTxHash,
+    verdict,
   };
 }
 
